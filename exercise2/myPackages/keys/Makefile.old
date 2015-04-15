@@ -1,0 +1,7 @@
+CC=$(CROSS_COMPILE)g++
+OBJS := main.o 
+main: $(OBJS)
+	$(CC) -o main $(OBJS)
+$(OBJS) : %.o : %.c
+	$(CC) -c $(CFLAGS) $< -o $@
+

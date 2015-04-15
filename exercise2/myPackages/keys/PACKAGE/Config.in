@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LEDKEYS
+	bool "ledkeys"
+	help
+		Keys game with leds
