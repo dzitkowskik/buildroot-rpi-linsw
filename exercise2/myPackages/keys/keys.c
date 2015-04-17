@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <sys/stat.h>
+#include <poll.h>
 
 class LinuxFile
 {
@@ -12,6 +13,11 @@ private:
     int m_Handle;
 
 public:
+    LinuxFile()
+    {
+        m_Handle = -1;
+    }
+
     LinuxFile(const char *pFile, int flags = O_RDWR)
     {
         m_Handle = open(pFile, flags);
@@ -20,7 +26,9 @@ public:
     ~LinuxFile()
     {
         if (m_Handle != -1)
+        {
             close(m_Handle);
+        }
     }
 
     size_t Write(const void *pBuffer, size_t size)
@@ -56,6 +64,11 @@ public:
             return true;
         }
     }
+
+    int GetHandle()
+    {
+        return m_Handle;
+    }
 };
 
 class LinuxGPIOExporter
@@ -79,18 +92,27 @@ public:
 
 class LinuxGPIO : public LinuxGPIOExporter
 {
+private:
+    static const int poll_timeout = -1;
+    LinuxFile* valueFile;
 public:
     LinuxGPIO(int number)
         : LinuxGPIOExporter(number)
     {
+        char szFN[128];
+        snprintf(szFN, sizeof(szFN),
+            "/sys/class/gpio/gpio%d/value", number);
+        valueFile = new LinuxFile(szFN);
+    }
+
+    ~LinuxGPIO()
+    {
+        delete valueFile;
     }
 
     void SetValue(bool value)
     {
-        char szFN[128];
-        snprintf(szFN, sizeof(szFN),
-            "/sys/class/gpio/gpio%d/value", m_Number);
-        LinuxFile(szFN).Write(value ? "1" : "0");
+        valueFile->Write(value ? "1" : "0");
     }
 
     void SetDirection(bool isOutput)
@@ -101,14 +123,45 @@ public:
         LinuxFile(szFN).Write(isOutput ? "out" : "in");
     }
 
+    void SetEdge(const char* edge)
+    {
+        char szFN[128];
+        snprintf(szFN, sizeof(szFN),
+            "/sys/class/gpio/gpio%d/edge", m_Number);
+        LinuxFile(szFN).Write(edge);
+    }
+
     int GetValue()
     {
         char value_str[3];
-        char szFN[128];
-        snprintf(szFN, sizeof(szFN),
-            "/sys/class/gpio/gpio%d/value", m_Number);
-        LinuxFile(szFN).Read(&value_str[0], 3);
+        valueFile->Read(&value_str[0], 3);
         return(atoi(value_str));
+    }
+
+    LinuxFile* GetValueFile()
+    {
+        return valueFile;
+    }
+
+    static int WaitChange(LinuxGPIO** gpios, const int cnt)
+    {
+        struct pollfd pFiles[cnt];
+        for(int i = 0; i < cnt; i++)
+        {
+          gpios[i]->GetValue();
+          pFiles[i].fd = gpios[i]->GetValueFile()->GetHandle();
+          pFiles[i].events = POLLPRI;
+          pFiles[i].revents = 0;
+        }
+
+        int res = poll(pFiles, cnt, poll_timeout);
+
+        if (res < 0) fprintf(stderr, "poll error!\n");
+        if (res == 0) printf("poll timeout!\n");
+
+        for(int i = 0; i < cnt; i++)
+          if(pFiles[i].revents & POLLPRI) return i+1;
+        return 0;
     }
 };
 
@@ -132,6 +185,10 @@ int main(int argc, char *argv[])
     button_2.SetDirection(false);
     button_3.SetDirection(false);
 
+    button_1.SetEdge("rising");
+    button_2.SetEdge("rising");
+    button_3.SetEdge("rising");
+
     led_blue.SetValue(false);
     led_white.SetValue(false);
     led_green.SetValue(false);
@@ -141,6 +198,11 @@ int main(int argc, char *argv[])
     int cnt = 4;
     int b1, b2, b3, last_b1=1, last_b2=1, last_b3=1;
 
+    LinuxGPIO** buttons = new LinuxGPIO*[3];
+    buttons[0] = &button_1;
+    buttons[1] = &button_2;
+    buttons[2] = &button_3;
+
     if(LinuxFile::Exist("/tmp/klucz.key")) // poproś o stworzenie klucza
     {
         printf("Stwórz klucz naciskając przyciski...\n");
@@ -149,27 +211,23 @@ int main(int argc, char *argv[])
 
         while(cnt)
         {
-            b1 = button_1.GetValue();
-            b2 = button_2.GetValue();
-            b3 = button_3.GetValue();
-            if(b1 =! last_b1 && !b1)
-                key[--cnt] = 1;
-            else if(b2 =! last_b2 && !b2)
-                key[--cnt] = 2;
-            else if(b3 =! last_b3 && !b3)
-                key[--cnt] = 3;
-            last_b1 = b1;
-            last_b2 = b2;
-            last_b3 = b3;
-            if(cnt==3) led_blue.SetValue(true);
-            if(cnt==2) led_white.SetValue(true);
-            if(cnt==1) led_green.SetValue(true);
-            if(cnt==0) led_red.SetValue(true);
-            usleep(100*1000);
+            int button = LinuxGPIO::WaitChange(buttons, 3);
+
+            if(button)
+            {
+                printf("Pressed button %d\n", button);
+                key[--cnt] = button;
+                if(cnt==3) led_blue.SetValue(true);
+                if(cnt==2) led_white.SetValue(true);
+                if(cnt==1) led_green.SetValue(true);
+                if(cnt==0) led_red.SetValue(true);
+                usleep(100*1000);
+            }
         }
 
         LinuxFile("/tmp/klucz.key", O_RDWR | O_CREAT).Write(key, 4*sizeof(int));
         printf("Zapisano klucz!\n");
+
         sleep(1);
     }
     else  // klucz został stworzony, poproś o jego wpisanie
@@ -179,19 +237,14 @@ int main(int argc, char *argv[])
 
         while(cnt)
         {
-            b1 = button_1.GetValue();
-            b2 = button_2.GetValue();
-            b3 = button_3.GetValue();
-            if(b1 =! last_b1 && !b1)
-                key[--cnt] = 1;
-            else if(b2 =! last_b2 && !b2)
-                key[--cnt] = 2;
-            else if(b3 =! last_b3 && !b3)
-                key[--cnt] = 3;
-            last_b1 = b1;
-            last_b2 = b2;
-            last_b3 = b3;
-            usleep(100*1000);
+            int button = LinuxGPIO::WaitChange(buttons, 3);
+
+            if(button)
+            {
+                printf("Pressed button %d\n", button);
+                key[--cnt] = button;
+                usleep(100*1000);
+            }
         }
 
         bool same = true;
@@ -217,5 +270,7 @@ int main(int argc, char *argv[])
     led_white.SetValue(false);
     led_green.SetValue(false);
     led_red.SetValue(false);
+
+    delete buttons;
     return 0;
 }

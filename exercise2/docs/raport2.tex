@@ -1,0 +1,171 @@
+\input{header.tex}
+\usepackage{listings}
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Treść zadania}
+\begin{enumerate}
+\item Przygotować aplikację w języku C, obsługującą przyciski i diody LED.
+\item Aplikacja powinna reagować na zmiany stanu przycisków bez oczekiwania aktywnego
+\item Funkcjonalność aplikacji, może być ustalona przez studenta przykłady 
+(można wymyślić własną, ciekawszą aplikację): stoper, z LED-ami potwierdzającymi operację i
+z możliwością pomiaru „międzyczasów” bądź zamek szyfrowy z logowaniem prób otwarcia. LED-y sygnalizują:
+otwarcie zamka, błędny kod, alarm po kilkukrotnym wprowadzeniu błędnego kodu.
+\item Przetestować korzystanie z debuggera (gdb) przy uruchamianiu aplikacji
+\item Zagadnienie dodatkowe: przygotować równoważną aplikację w wybranym języku skryptowym i porównać
+wydajność obu implementacji
+\end{enumerate}
+
+\section{Rozwiązanie}
+
+\subsection{Konfiguracja \emph{buildroot}}
+Bazuję na konfiguracji z zadania poprzedniego i dodatkowo:
+\begin{enumerate}
+	\item W Target Packages -> Interpreter languages and scripting, wybieram python
+	\item W Target Packages -> Debugging ..., wybieram gdb (gdbserver)
+	\item W Toolchain -> Toolchain type, wybieram External toolchain
+	\item W Toolchain ustawiam również Build cross gdb for the host
+	\item W Build options ustawiam Build packages with debugging symbols
+	\begin{lstlisting}[language=bash]
+	git clone git://git.buildroot.net/buildroot --depth 1
+	\end{lstlisting}
+	\item Przechodzę do utworzonego katalogu
+	\begin{lstlisting}[language=bash]
+	cd buildroot
+	\end{lstlisting}	
+	\item Ustawiam konfigurację dla Raspberry Pi
+	\begin{lstlisting}[language=bash]
+	make raspberrypi_defconfig
+	\end{lstlisting}	
+	\item Wpisuję \emph{make menuconfig} aby przejść do konfiguracji i ustawiam:
+	\begin{itemize}	
+		\item Filesystem images (pkt 1 zadania)
+		\begin{itemize}
+			\item initial RAM filesystem linked into linux kernel
+		\end{itemize}
+		
+		\item System configuration
+		\begin{itemize}
+			\item Root filesystem overlay directories ustawiam na \emph{moje}
+			\item System hostname ustawiam na \emph{Karol Dzitkowski}
+			\item Root password ustawiam na \emph{password}
+			\item Network interface to configure through DHCP
+			\item Install timezone info
+				\begin{itemize}
+				\item Timezone list ustawiam na \emph{default}
+				\item Default local time ustawiam na \emph{Europe/Warsaw}
+				\end{itemize}
+			\item Path to the users tables ustawiam na \emph{board/linsw}
+			\item Getty options 
+			\begin{itemize}
+				\item TTY port ustawiam na (\emph{ttyAMA0})
+			\end{itemize}
+		\end{itemize}
+		
+		\item Packages 
+		\begin{itemize}
+			\item ntp i ntpdate oraz dodatkowo ntpdc
+			\item dhcp client (domyślnie w \emph{busybox})
+			\item dropbear do ustawienia ssh
+			\item lighttpd
+		\end{itemize}
+	\end{itemize}
+	
+	\item Tworzę i wypełniam plik definiujący konto dodatkowego użytkownika
+	\begin{lstlisting}[language=bash]
+	echo "default -1 default -1 =password /home/default /bin/sh -" \
+	> /board/linsw
+	\end{lstlisting}	
+		
+	\item Tworzę katalogi do overlay
+	\begin{lstlisting}[language=bash]
+	mkdir moje
+	mkdir moje/etc
+	mkdir moje/var/www
+	mkdir moje/etc/init.d
+	mkdir moje/etc/network
+	\end{lstlisting}	
+	
+	\item Tworzę i wypełniam plik strony www
+	\begin{lstlisting}[language=bash]
+echo "<html><p>Hello World!</p></html>" > moje/var/www/index.html 
+	\end{lstlisting}
+		
+	\item Aktualizuję konfigurację sieci w pliku interfaces
+	\begin{lstlisting}[language=bash]
+	vim moje/etc/network/interfaces
+	...
+	\end{lstlisting}
+		
+	\item Tworzę plik uruchamiany zaraz po starcie systemu w celu skonfigurowania dhcp oraz zamontowania karty SD (do kopiowania kernela przez ssh)
+	\begin{lstlisting}[language=bash]
+	vim moje/etc/init.d/S99start
+	#! /bin/sh
+	sleep 5
+	udhcpc
+	mkdir -p /media/card
+	mount /dev/mmcblk0p1 /media/card
+	\end{lstlisting}
+		
+	\item Buduję system
+	\begin{lstlisting}[language=bash]
+	make
+	\end{lstlisting}		
+\end{enumerate}
+
+\subsection{Debugowanie \emph{Raspberry}}
+gdbserver host:7654 nano
+●
+Na stacji roboczej:
+–
+BRPATH/output/host/usr/bin/arm-none-linux-gnueabi-gdb /SCIEZKA/mypkg
+a potem w sesji debuggera:
+–
+(gdb) set sysroot BRPATH/output/target
+–
+(gdb) target remote xxx.yyy.zzz.vvv:7654
+
+
+
+
+\begin{enumerate}
+\item Kopiuję pliki z katalogu output/images na wcześniej sformatowaną kartę pamięci (MS-DOS FAT na OS X):	\begin{lstlisting}[language=bash]
+cp output/images/rpi-firmware/* <katalog karty SD>
+cp output/images/zImage <katalog karty SD>
+\end{lstlisting}	
+
+\item Edytuję plik ... i ustawiam tty na ttyAMA0
+\item Podłączam Raspberry do sieci poprzez użycie Ethernet, do komputera przez port szeregowy z przejściówką na USB oraz do prądu używając zasilania z USB komputera
+
+\end{enumerate}
+\section{Praca z urządzeniem}
+\begin{enumerate}
+\item Używając narzędzia \emph{minicom} podłączam się do konsoli urządzenia
+\begin{lstlisting}[language=bash]
+minicom -D \dev\ttyUSB0 -o
+\end{lstlisting}	
+Zaraz po tym wciskam Ctrl-A w celu wyłączenia sprzętowej kontroli przepływu (hardware flow control) w ustawieniach portu szeregowego
+\item Raspberry pi startuje, montuje kartę SD, włącza sieć używając udhcpc
+\item Wpisuję nazwę użytkownika root lub default oraz hasło password
+\item W wypadku przerwania połączenia z internetem muszę ponownie wpisać udhcpc w konsoli
+\item Wpisanie polecenia date skutkuje wypisaniem poprawnego lokalnego czasu
+\item Wpisuję ifconfig i zapamiętuję nadany adres IP na eth0
+\item Sprawdzam na komputerze stronę internetową na zapamiętanym adresie IP
+\item Ustawiam połączenie SSH na komputerze stacjonarnym
+\begin{lstlisting}[language=bash]
+cd ~/ssh
+scp root@<zapamietany adres IP>:/etc/dropbear/dropbear_ecdsa_host_key ./
+yes, haslo
+ssh root@<zapamietany adres IP>
+\end{lstlisting}
+Teraz mogę już śmiało korzystać z Raspberry i przy zmianach kernela podmieniać go przez ssh (scp)
+\end{enumerate}
+
+\section{Wygenerowany plik konfiguracyjny buildroot}
+\begin{lstlisting}[language=bash]
+cat configs/raspberrypi_defconfig 
+
+\end{lstlisting}	
+\end{document}
