@@ -1,0 +1,10 @@
+#! /bin/sh
+case "$1" in
+	start)
+		sleep 5
+		udhcpc --tryagain 10 --retries 5 --timeout 10 -f -i eth0
+		mkdir /mnt/sdcard >> /var/log.log
+		mount /dev/mmcblk0p1 /mnt/sdcard >> /var/log.log ;;
+	*)
+		echo $"Usage: $0 {start|stop|restart|reload|condrestart|status}" ;;
+esac

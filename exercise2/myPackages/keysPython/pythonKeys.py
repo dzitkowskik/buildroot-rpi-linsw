@@ -5,6 +5,7 @@ import time
 import os, sys
 import os.path
 import json
+import select
 
 class GpioExporter(object):
     def __init__(self, number):
@@ -12,6 +13,7 @@ class GpioExporter(object):
         self.file = '/sys/class/gpio/gpio'+str(self.number)
         self.valueFile = self.file+'/value'
         self.directionFile = self.file+'/direction'
+        self.edgeFile = self.file+'/edge'
 
     def export(self):
         # self.unexport()
@@ -29,8 +31,9 @@ class GpioExporter(object):
 class GPIO(GpioExporter):
     def __init__(self, number):
         super(GPIO, self).__init__(number)
-        print "Create GPIO "+str(self.number)+"\n"
+        # print "Create GPIO "+str(self.number)+"\n"
         self.export()
+        self.value = open(self.valueFile, 'r')
 
     def setValue(self, value):
         with open(self.valueFile, 'w') as f:
@@ -40,12 +43,20 @@ class GPIO(GpioExporter):
         with open(self.directionFile, 'w') as f:
             f.write(str(dir))
 
+    def setEdge(self, edge):
+        with open(self.edgeFile, 'w') as f:
+            f.write(edge)
+
     def getValue(self):
-        with open(self.valueFile, 'r') as f:
-            return int(f.read())
+        self.value.seek(0, 0)
+        v = self.value.read()
+        #print "Wartość {0}".format(v)
+        if v == '': return 1
+        return int(v)
 
     def __del__(self):
-        print "Delete GPIO "+str(self.number)+"\n"
+        # print "Delete GPIO "+str(self.number)+"\n"
+        self.value.close()
         self.unexport()
 
 class Led(GPIO):
@@ -71,6 +82,7 @@ class Button(GPIO):
     def __init__(self, number):
         super(Button, self).__init__(number)
         self.setDirection('in')
+        self.setEdge('rising')
 
     def pressed(self):
         result = False
@@ -90,6 +102,7 @@ led_blue = Led(17)
 button_1 = Button(10)
 button_2 = Button(27)
 button_3 = Button(22)
+buttons = { button_1, button_2, button_3 }
 
 def switchLedsOFF():
     led_red.off()
@@ -111,6 +124,11 @@ def main():
     old_key = {}
     key = {}
     len = 4
+
+    po = select.poll()
+    for b in buttons:
+       po.register(b.value, select.POLLPRI)
+
     fileKey = '/tmp/klucz.key'
     if os.path.exists(fileKey):
         with open(fileKey, 'r') as f:
@@ -118,16 +136,21 @@ def main():
         print "Podaj klucz naciskając przyciski aby odczytać wiadomość"
 
         while (len != 0):
-            if button_1.pressed() is True:
-                len -= 1
-                key[len] = 1
-            elif button_2.pressed() is True:
-                len -= 1
-                key[len] = 2
-            elif button_3.pressed() is True:
-                len -= 1
-                key[len] = 3
-            time.sleep(0.1)
+            button_1.pressed()
+            button_2.pressed()
+            button_3.pressed()
+            events = po.poll()
+            for fd, flag in events:
+                print fd
+                if fd == button_1.value.fileno():
+                    len -= 1
+                    key[len] = 1
+                elif fd == button_2.value.fileno():
+                    len -= 1
+                    key[len] = 2
+                elif fd == button_3.value.fileno():
+                    len -= 1
+                    key[len] = 3
 
         same = True
         for i in range(0, 4):
@@ -146,22 +169,28 @@ def main():
         print "Klucz musi być odpowiednio długi więc"
         print "Wpisuj kod aż nie zapali się czerwona dioda..."
         while (len != 0):
-            if button_1.pressed() is True:
-                len -= 1
-                key[len] = 1
-            elif button_2.pressed() is True:
-                len -= 1
-                key[len] = 2
-            elif button_3.pressed() is True:
-                len -= 1
-                key[len] = 3
+            button_1.pressed()
+            button_2.pressed()
+            button_3.pressed()
+            events = po.poll()
+            for fd, flag in events:
+                print fd
+                if fd == button_1.value.fileno():
+                    len -= 1
+                    key[len] = 1
+                elif fd == button_2.value.fileno():
+                    len -= 1
+                    key[len] = 2
+                elif fd == button_3.value.fileno():
+                    len -= 1
+                    key[len] = 3
 
-            if len == 3: led_blue.on()
-            if len == 2: led_white.on()
-            if len == 1: led_green.on()
-            if len == 0: led_red.on()
+                if len == 3: led_blue.on()
+                if len == 2: led_white.on()
+                if len == 1: led_green.on()
+                if len == 0: led_red.on()
+            
 
-            time.sleep(0.1)
         with open(fileKey, 'w') as f:
             json.dump(key, f)
         print "Zapisano klucz!"
