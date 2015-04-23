@@ -19,153 +19,129 @@ wydajność obu implementacji
 \end{enumerate}
 
 \section{Rozwiązanie}
+Napisałem aplikację w języku C++ a następnie taką samą w Pythonie, która symulowała zamek na kod pin.
+Kod wstukuje się za pomocą przycisków dopóki nie zapalą się wszystkie diody LED. Następnie kod 
+zapisywany jest w pliku. Po ponownym uruchomieniu programu, program pyta się o zapisane hasło. Jeśli
+wciśniemy tą samą konfigurację przycisków diody się zaświecą i wypisze się komunikat o sukcesie oraz
+plik z hasłem zostanie usunięty. W przeciwnym wypadku zostaniemy poinformowani o porażce.
 
 \subsection{Konfiguracja \emph{buildroot}}
-Bazuję na konfiguracji z zadania poprzedniego i dodatkowo:
+Bazuję na konfiguracji z zadania poprzedniego i dodatkowo w menu wywołanym za pomocą komendy:
+	\begin{lstlisting}[language=bash]
+make menuconfig
+	\end{lstlisting}	
+ustawiam:
 \begin{enumerate}
 	\item W Target Packages -> Interpreter languages and scripting, wybieram python
 	\item W Target Packages -> Debugging ..., wybieram gdb (gdbserver)
 	\item W Toolchain -> Toolchain type, wybieram External toolchain
 	\item W Toolchain ustawiam również Build cross gdb for the host
 	\item W Build options ustawiam Build packages with debugging symbols
+\end{enumerate}
+
+Ponadto w konfiguracji jądra do którego wchodzę za pomocą komendy:
 	\begin{lstlisting}[language=bash]
-	git clone git://git.buildroot.net/buildroot --depth 1
-	\end{lstlisting}
-	\item Przechodzę do utworzonego katalogu
-	\begin{lstlisting}[language=bash]
-	cd buildroot
+make linux-menuconfig
 	\end{lstlisting}	
-	\item Ustawiam konfigurację dla Raspberry Pi
+ustawiam:
+\begin{enumerate}
+	\item Device Drivers -> GPIO Support -> /sys/class/gpio/... (sysfs interface)
+\end{enumerate}
+
+następnie na początku pliku /malina/buildroot/package/Config.in dodaję:
+\begin{lstlisting}[language=bash]
+menu "My menu"
+source "package/ledkeys/Config.in"
+endmenu
+\end{lstlisting}
+
+co więcej dodałem katalog ledkeys do katalogu package z dwoma plikami:
+\begin{itemize}
+	\item Config.in
 	\begin{lstlisting}[language=bash]
-	make raspberrypi_defconfig
-	\end{lstlisting}	
-	\item Wpisuję \emph{make menuconfig} aby przejść do konfiguracji i ustawiam:
-	\begin{itemize}	
-		\item Filesystem images (pkt 1 zadania)
-		\begin{itemize}
-			\item initial RAM filesystem linked into linux kernel
-		\end{itemize}
-		
-		\item System configuration
-		\begin{itemize}
-			\item Root filesystem overlay directories ustawiam na \emph{moje}
-			\item System hostname ustawiam na \emph{Karol Dzitkowski}
-			\item Root password ustawiam na \emph{password}
-			\item Network interface to configure through DHCP
-			\item Install timezone info
-				\begin{itemize}
-				\item Timezone list ustawiam na \emph{default}
-				\item Default local time ustawiam na \emph{Europe/Warsaw}
-				\end{itemize}
-			\item Path to the users tables ustawiam na \emph{board/linsw}
-			\item Getty options 
-			\begin{itemize}
-				\item TTY port ustawiam na (\emph{ttyAMA0})
-			\end{itemize}
-		\end{itemize}
-		
-		\item Packages 
-		\begin{itemize}
-			\item ntp i ntpdate oraz dodatkowo ntpdc
-			\item dhcp client (domyślnie w \emph{busybox})
-			\item dropbear do ustawienia ssh
-			\item lighttpd
-		\end{itemize}
-	\end{itemize}
-	
-	\item Tworzę i wypełniam plik definiujący konto dodatkowego użytkownika
-	\begin{lstlisting}[language=bash]
-	echo "default -1 default -1 =password /home/default /bin/sh -" \
-	> /board/linsw
-	\end{lstlisting}	
-		
-	\item Tworzę katalogi do overlay
-	\begin{lstlisting}[language=bash]
-	mkdir moje
-	mkdir moje/etc
-	mkdir moje/var/www
-	mkdir moje/etc/init.d
-	mkdir moje/etc/network
-	\end{lstlisting}	
-	
-	\item Tworzę i wypełniam plik strony www
-	\begin{lstlisting}[language=bash]
-echo "<html><p>Hello World!</p></html>" > moje/var/www/index.html 
-	\end{lstlisting}
-		
-	\item Aktualizuję konfigurację sieci w pliku interfaces
-	\begin{lstlisting}[language=bash]
-	vim moje/etc/network/interfaces
-	...
-	\end{lstlisting}
-		
-	\item Tworzę plik uruchamiany zaraz po starcie systemu w celu skonfigurowania dhcp oraz zamontowania karty SD (do kopiowania kernela przez ssh)
-	\begin{lstlisting}[language=bash]
-	vim moje/etc/init.d/S99start
-	#! /bin/sh
-	sleep 5
-	udhcpc
-	mkdir -p /media/card
-	mount /dev/mmcblk0p1 /media/card
-	\end{lstlisting}
-		
+config BR2_PACKAGE_LEDKEYS
+bool "ledkeys"
+help
+	Keys game with leds
+\end{lstlisting}
+	\item keys.mk
+\begin{lstlisting}[language=bash]
+LEDKEYS_VERSION = 1.0
+LEDKEYS_SITE = $(TOPDIR)/myPackages/keys
+LEDKEYS_SITE_METHOD = local
+
+define LEDKEYS_BUILD_CMDS
+	$(MAKE) $(TARGET_CONFIGURE_OPTS) keys -C $(@D)
+endef
+define LEDKEYS_INSTALL_TARGET_CMDS
+	$(INSTALL) -D -m 0755 $(@D)/keys $(TARGET_DIR)/usr/bin
+endef
+LEDKEYS_LICENSE = GPL
+
+$(eval $(generic-package))
+\end{lstlisting}
+\end{itemize}
+Źródła mojego programu w C++ trzymam w katalogu /malina/buildroot/myPackages/keys wraz
+z Makefile. Kod znajduje się w załączniku spakowanym wraz ze skryptem Pythona.
+Na końcu:
+\begin{enumerate}	
 	\item Buduję system
 	\begin{lstlisting}[language=bash]
 	make
 	\end{lstlisting}		
 \end{enumerate}
 
-\subsection{Debugowanie \emph{Raspberry}}
-gdbserver host:7654 nano
-●
-Na stacji roboczej:
-–
-BRPATH/output/host/usr/bin/arm-none-linux-gnueabi-gdb /SCIEZKA/mypkg
-a potem w sesji debuggera:
-–
-(gdb) set sysroot BRPATH/output/target
-–
-(gdb) target remote xxx.yyy.zzz.vvv:7654
-
-
-
-
+\subsection{Debugowanie C++ na \emph{Raspberry}}
 \begin{enumerate}
-\item Kopiuję pliki z katalogu output/images na wcześniej sformatowaną kartę pamięci (MS-DOS FAT na OS X):	\begin{lstlisting}[language=bash]
-cp output/images/rpi-firmware/* <katalog karty SD>
-cp output/images/zImage <katalog karty SD>
-\end{lstlisting}	
+\item Poprzez terminal minicom na urządzeniu wpisałem polecenie:
+\begin{lstlisting}[language=bash]
+gdbserver host:7654 nano
+\end{lstlisting}
 
-\item Edytuję plik ... i ustawiam tty na ttyAMA0
-\item Podłączam Raspberry do sieci poprzez użycie Ethernet, do komputera przez port szeregowy z przejściówką na USB oraz do prądu używając zasilania z USB komputera
+\item Natomiast na stacji roboczej:
+\begin{lstlisting}[language=bash]
+/malina/buildroot/output/host/usr/bin/arm-none-linux-gnueabi-gdb /malina/buildroot/output/build/ledkeys-1.0/keys
+\end{lstlisting}
 
+\item Potem w sesji debuggera:
+\begin{lstlisting}[language=bash]
+(gdb) set sysroot /malina/buildroot/output/target
+(gdb) target remote xxx.yyy.zzz.vvv:7654
+\end{lstlisting}
+gdzie $xxx.yyy.zzz.vvv$ oznacza adres IP mojego urządzenia.
 \end{enumerate}
+
 \section{Praca z urządzeniem}
 \begin{enumerate}
-\item Używając narzędzia \emph{minicom} podłączam się do konsoli urządzenia
+\item Jako że użądzenie ma ustawiony serwer ssh łączę się do niego przy użyciu komendy:
 \begin{lstlisting}[language=bash]
-minicom -D \dev\ttyUSB0 -o
-\end{lstlisting}	
-Zaraz po tym wciskam Ctrl-A w celu wyłączenia sprzętowej kontroli przepływu (hardware flow control) w ustawieniach portu szeregowego
-\item Raspberry pi startuje, montuje kartę SD, włącza sieć używając udhcpc
-\item Wpisuję nazwę użytkownika root lub default oraz hasło password
-\item W wypadku przerwania połączenia z internetem muszę ponownie wpisać udhcpc w konsoli
-\item Wpisanie polecenia date skutkuje wypisaniem poprawnego lokalnego czasu
-\item Wpisuję ifconfig i zapamiętuję nadany adres IP na eth0
-\item Sprawdzam na komputerze stronę internetową na zapamiętanym adresie IP
-\item Ustawiam połączenie SSH na komputerze stacjonarnym
+ssh root@<zapamietany adres IP>
+\end{lstlisting}
+aby nie mieć problemów z walidacją ssh wykonuję poniższe komendy:
 \begin{lstlisting}[language=bash]
 cd ~/ssh
 scp root@<zapamietany adres IP>:/etc/dropbear/dropbear_ecdsa_host_key ./
 yes, haslo
-ssh root@<zapamietany adres IP>
 \end{lstlisting}
 Teraz mogę już śmiało korzystać z Raspberry i przy zmianach kernela podmieniać go przez ssh (scp)
+Mogę także przetestować działanie moich programów. Program napisany w C++ i zainstalowany przy pomocy
+paczki buildroot uruchamiam wpisując:
+\begin{lstlisting}[language=bash]
+./keys
+\end{lstlisting}
+Aby uruchomić skrypt Pythona muszę go najpierw skopiować na kartę w raspberry:
+\begin{lstlisting}[language=bash]
+scp pythonKeys.py root@<zapamietany adres IP>:/mnt/sdcard/
+chmod +x pythonKeys.py
+./pythonKeys.py
+\end{lstlisting}
+Po testach doszedłem do wniosku że wszystko działa poprawnie.
 \end{enumerate}
 
-\section{Wygenerowany plik konfiguracyjny buildroot}
+\section{Pliki konfiguracyjne i źródła}
+Pliki konfiguracyjne i źródła do tego jak i wcześniejszego zadania laboratoryjnego umieściłem w repozytorium
+git na serwisie www.github.com. Aby ściągnąć te źródła należy w katalogu docelowym wykonać polecenie:
 \begin{lstlisting}[language=bash]
-cat configs/raspberrypi_defconfig 
-
+git clone https://github.com/dzitkowskik/buildroot-rpi-linsw.git
 \end{lstlisting}	
 \end{document}
