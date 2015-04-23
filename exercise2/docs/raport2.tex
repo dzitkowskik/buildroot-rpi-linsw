@@ -27,16 +27,16 @@ plik z hasłem zostanie usunięty. W przeciwnym wypadku zostaniemy poinformowani
 
 \subsection{Konfiguracja \emph{buildroot}}
 Bazuję na konfiguracji z zadania poprzedniego i dodatkowo w menu wywołanym za pomocą komendy:
-	\begin{lstlisting}[language=bash]
+\begin{lstlisting}[language=bash]
 make menuconfig
-	\end{lstlisting}	
+\end{lstlisting}	
 ustawiam:
 \begin{enumerate}
-	\item W Target Packages -> Interpreter languages and scripting, wybieram python
-	\item W Target Packages -> Debugging ..., wybieram gdb (gdbserver)
-	\item W Toolchain -> Toolchain type, wybieram External toolchain
-	\item W Toolchain ustawiam również Build cross gdb for the host
-	\item W Build options ustawiam Build packages with debugging symbols
+	\item W Target Packages $\rightarrow$ Interpreter languages and scripting $\rightarrow$ wybieram python
+	\item W Target Packages $\rightarrow$ Debugging ... $\rightarrow$ wybieram gdb (gdbserver)
+	\item W Toolchain $\rightarrow$ Toolchain type $\rightarrow$ wybieram External toolchain
+	\item W Toolchain $\rightarrow$ ustawiam również Build cross gdb for the host
+	\item W Build options $\rightarrow$ ustawiam Build packages with debugging symbols
 \end{enumerate}
 
 Ponadto w konfiguracji jądra do którego wchodzę za pomocą komendy:
@@ -45,7 +45,7 @@ make linux-menuconfig
 	\end{lstlisting}	
 ustawiam:
 \begin{enumerate}
-	\item Device Drivers -> GPIO Support -> /sys/class/gpio/... (sysfs interface)
+	\item Device Drivers $\rightarrow$ GPIO Support $\rightarrow$ /sys/class/gpio/... (sysfs interface)
 \end{enumerate}
 
 następnie na początku pliku /malina/buildroot/package/Config.in dodaję:
@@ -135,7 +135,9 @@ scp pythonKeys.py root@<zapamietany adres IP>:/mnt/sdcard/
 chmod +x pythonKeys.py
 ./pythonKeys.py
 \end{lstlisting}
-Po testach doszedłem do wniosku że wszystko działa poprawnie.
+Po testach doszedłem do wniosku że wszystko działa poprawnie. Ponadto nie było zauważalnej różnicy
+pomiędzy wydajnością rozwiązania napisanego za pomocą C++ a rozwiązaniem skryptowym w języku Python.
+Jednak z powodu instalacji pythona rozmiar obrazu systemu znacznie się powiększył (11 MB).
 \end{enumerate}
 
 \section{Pliki konfiguracyjne i źródła}
