@@ -1,0 +1,45 @@
+#!/bin/sh
+
+KEY_1=10
+KEY_2=22
+KEY_3=27
+
+LED_1=23
+LED_2=18
+LED_3=17
+LED_4=24
+
+gpio_direction_output $LED_1 1
+gpio_direction_output $LED_2 1
+gpio_direction_output $LED_3 1
+gpio_direction_output $LED_4 1
+
+gpio_set_value $LED_1 0
+gpio_set_value $LED_2 0
+gpio_set_value $LED_3 0
+gpio_set_value $LED_4 0
+
+clicked=0
+while [ $clicked -eq 0 ]; do
+  for i in $KEY_1 $KEY_2 $KEY_3 ; do
+    gpio_get_value $i
+    if [ $? -eq 0 ]; then
+      clicked=$i
+      if [ $clicked -eq $KEY_1 ]; then
+        gpio_set_value $LED_1 1
+        echo "Booting administrator system on initramfs"
+        bootm /boot/adm_uImage
+      elif [ $clicked -eq $KEY_2 ]; then
+        gpio_set_value $LED_4 1
+        echo "Booting user system on e2fs"
+        bootm /boot/uImage_user
+      else
+        echo "Opening Barebox"
+        gpio_set_value $LED_1 1
+        gpio_set_value $LED_2 1
+        gpio_set_value $LED_3 1
+        gpio_set_value $LED_4 1
+      fi
+    fi
+  done
+done

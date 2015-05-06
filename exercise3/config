@@ -1,0 +1,17 @@
+global.linux.bootargs.dyn.root="root=/dev/mmcblk0p2 rootfstype=ext3 rw rootwait"
+
+rootfs_loc=disk
+rootfs_type=ext4
+rootfs_part_linux_dev=mmcblk0p2
+rootfsimage=rootfs.ext4
+kernel_part=disk0.1
+kernelimage=uImage
+bootargs="console=ttyAMA0,115200 root=/dev/mmcblk0p2 rootwait"
+
+export rootfs_loc=disk
+export rootfs_type=ext4
+export rootfs_part_linux_dev=mmcblk0p2
+export rootfsimage=rootfs.ext4
+export kernel_part=disk0.1
+export kernelimage=uImage
+export bootargs="console=ttyAMA0,115200 root=/dev/mmcblk0p2 rootwait"
