@@ -32,7 +32,9 @@ while [ $clicked -eq 0 ]; do
       elif [ $clicked -eq $KEY_2 ]; then
         gpio_set_value $LED_4 1
         echo "Booting user system on e2fs"
-        bootm /boot/uImage_user
+        mkdir /boot2
+        mount /dev/disk0.1 /boot2
+        bootm /boot2/boot/uImage
       else
         echo "Opening Barebox"
         gpio_set_value $LED_1 1
