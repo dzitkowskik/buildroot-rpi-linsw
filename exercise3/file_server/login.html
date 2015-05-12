@@ -1,0 +1,39 @@
+<!doctype html>
+
+<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>File manager</title>
+	  <!--[if lt IE 9]>
+	  <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+	  <![endif]-->
+	</head>
+
+	<body>
+		<div id="main-container">
+		    <div id="main">
+			<div id="login-form">
+			    <form action="/login/" method="post" id="login_form">
+				<fieldset>
+				    <label for="username">Username</label>
+				    <input autocapitalize="off" autocorrect="off" class="text-input" id="username" name="username" tabindex="1" type="text" value="">
+				</fieldset>
+
+				<fieldset>
+				    <label for="password">Password</label>
+				    <input class="text-input" id="password" name="password" tabindex="2" type="password" value="">
+				</fieldset>
+				<fieldset>
+				    <span class="errormessage">{{errormessage}}</span>
+				</fieldset>
+
+				<div id="form_btn">
+				    <input id="signin-btn" class="btn btn-blue" type="submit" value="Sign In" tabindex="3">
+				    <!-- <a href="/sb/"><input id="inscription-btn" class="btn btn-red" value="Inscription" tabindex="3"></a> -->
+				</div>
+			    </form>
+			</div>
+		    </div>
+		</div>
+	</body>
+</html>
