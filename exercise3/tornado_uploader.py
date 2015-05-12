@@ -1,4 +1,8 @@
 #!/usr/bin/python
+import tornado.auth
+import tornado.escape
+import tornado.httpserver
+import tornado.options
 import tornado
 import tornado.ioloop
 import tornado.web
@@ -6,83 +10,82 @@ import os, uuid
 
 __UPLOADS__ = "/tmp/"
 
-class Userform(tornado.web.RequestHandler):
-    def get(self):
-        self.render("fileuploadform.html")
+class BaseHandler(tornado.web.RequestHandler):
+    def get_current_user(self):
+        return self.get_secure_cookie("user")
 
-class Upload(tornado.web.RequestHandler):
+class Mainform(BaseHandler):
+    def get(self):
+        items = []
+        for filename in os.listdir(__UPLOADS__):
+            items.append(filename)
+        self.render("fileuploadform.html", items=items)
+
+class Upload(BaseHandler):
     def post(self):
+	if not self.current_user: self.redirect(u"/login/")
+	username = tornado.escape.xhtml_escape(self.current_user)
         fileinfo = self.request.files['filearg'][0]
         print "fileinfo is", fileinfo
         fname = fileinfo['filename']
-        extn = os.path.splitext(fname)[1]
-        cname = str(uuid.uuid4()) + extn
-        fh = open(__UPLOADS__ + cname, 'w')
+        fh = open(__UPLOADS__ + fname, 'w')
         fh.write(fileinfo['body'])
-        self.finish(cname + " is uploaded!! Check %s folder" %__UPLOADS__)
+        backButton = '<input type="button" value="Go Back From Whence You Came!" onclick="history.back(-1)" />'
+        successPage = "{0} is uploaded by {1}, check {2} folder".format(fname, str(username), __UPLOADS__)
+        self.finish(successPage + backButton)
 
-#define pins
-LEDS=[17,18,23,24]
-SWS=[10,22,27]
-#Export pins
-for i in LEDS+SWS:
-  os.system("echo "+str(i)+" > /sys/class/gpio/export")
-#Set LEDS to outputs and switch them off
-for i in LEDS:
-  os.system("echo low > /sys/class/gpio/gpio"+str(i)+'/direction')
-os.system("echo high > /sys/class/gpio/gpio18/direction")
-
-class MyFormHandler(tornado.web.RequestHandler):
+class AuthLoginHandler(BaseHandler):
     def get(self):
-        led_state={}
-        switch_state={}
-        #Read state of leds
-        for i in LEDS:
-            led_state[i]=int(open('/sys/class/gpio/gpio'+str(i)+'/value','r').read())
-        #Read state of switches
-        for i in SWS:
-            switch_state[i]=int(open('/sys/class/gpio/gpio'+str(i)+'/value','r').read())
-        resp='<html><body>'
-        resp+='<form action="/" method="post">'
-        for i in LEDS:
-          print led_state[i]
-          if led_state[i] == 1:
-             state1=' checked ="checked" '
-             state2=''
-          else:
-             state1=''
-             state2=' checked ="checked" '
-          resp+='<input type="radio" name="L'+str(i)+'" value="0" '+state2+'"/> Off '
-          resp+='<input type="radio" name="L'+str(i)+'" value="1" '+state1+'"/> On L'+str(i)+'<p>'
-        for i in SWS:
-          resp+='Switch '+str(i)+': '+str(switch_state[i])+'<p>'
-        resp+='<input type="submit" value="Submit">'
-        resp+='</form></body></html>'
-        print resp
-        self.write(resp)
-
+        try:
+            errormessage = self.get_argument("error")
+        except:
+            errormessage = ""
+        self.render("login.html", errormessage = errormessage)
+ 
+    def check_permission(self, password, username):
+        if username == "admin" and password == "admin":
+            return True
+        return False
+ 
     def post(self):
-        #self.set_header("Content-Type", "text/plain")
-        #self.write("You wrote " + self.get_argument("message"))
-        for i in LEDS:
-            v=self.get_argument("L"+str(i))
-            #a='checked'
-            #print i, a
-            #if a=="checked":
-            #   v='1'
-            #else:
-            #   v='0'
-            print "switching LED"+str(i)+" to:"+v
-            open('/sys/class/gpio/gpio'+str(i)+'/value','w').write(v)
-        self.get()
+        username = self.get_argument("username", "")
+        password = self.get_argument("password", "")
+        auth = self.check_permission(password, username)
+        if auth:
+            self.set_current_user(username)
+            self.redirect(u"/")
+        else:
+            error_msg = u"?error=" + tornado.escape.url_escape("Login incorrect")
+            self.redirect(u"/login/" + error_msg)
+ 
+    def set_current_user(self, user):
+        if user:
+            self.set_secure_cookie("user", tornado.escape.json_encode(user))
+        else:
+            self.clear_cookie("user")
+
+class AuthLogoutHandler(BaseHandler):
+    def get(self):
+        self.clear_cookie("user")
+        self.redirect(u"/")
+
+settings = {
+    "cookie_secret": 'L8LwECiNRxq2N0N2eGxx9MZlrpmuMEimlydNX/vt1LM=',
+    "debug": True,
+    "login_url": "/login/",
+}
 
 application = tornado.web.Application([
-    (r"/", Userform),
+    (r"/", Mainform),
     (r"/upload", Upload),
-    (r"/leds", MyFormHandler),
-    (r'/download/(.*)',tornado.web.StaticFileHandler,{'path':"/tmp/"}),
-], debug=True)
+    (r"/download/(.*)",tornado.web.StaticFileHandler,{'path':__UPLOADS__}),
+    (r"/login", AuthLoginHandler),
+    (r"/login/", AuthLoginHandler),
+    (r"/logout", AuthLogoutHandler),
+   (r"/logout/", AuthLogoutHandler),
+], **settings)
 
 if __name__ == "__main__":
     application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()
+

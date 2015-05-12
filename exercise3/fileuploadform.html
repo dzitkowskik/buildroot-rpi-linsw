@@ -4,6 +4,13 @@
 <title>Upload Form</title>
 </head>
 <body>
+<p><h1>Download</h1></p>
+<ul>
+<li id = "title">Files</li>
+{%for item in items%}
+<li id="file"><a href="download/{{item}}">{{item}}</a></li>
+{%end%}
+</ul>
 <p><h1>Select & Upload</h1></p>
 <form enctype="multipart/form-data" action="/upload" method="post">
 File: <input type="file" name="filearg" />
@@ -11,3 +18,4 @@ File: <input type="file" name="filearg" />
 <br />
 <input type="submit" value="upload" />
 </form>
+
