@@ -59,11 +59,15 @@ Dla systemu administracyjnego ustawiam:
 
 
 \section{Konfiguracja barebox}
-Po poprawnym sformatowaniu karty kopiuję zawartość pliku init (z repozytorium w folderze scripts zadania 3) do pliku $ /env/bin/init $ zastępując poprzednią zawartość. Po czym wykonuję komendy:
+\begin{itemize}
+\item Zmieniam w pliku config.txt na karcie w partycji sformatowanej jako vfat, ustawiając
+$$kernel=barebox.bin$$
+\item Po poprawnym sformatowaniu karty kopiuję zawartość pliku init (z repozytorium w folderze scripts zadania 3) do pliku $ /env/bin/init $ zastępując poprzednią zawartość. Po czym wykonuję komendy:
 \begin{lstlisting}[language=bash]
 $ saveenv
 $ reset
 \end{lstlisting}	
+\end{itemize}
 
 \section{Pliki konfiguracyjne i źródła}
 Pliki konfiguracyjne i źródła do tego jak i wcześniejszych zadań umieściłem w repozytorium
