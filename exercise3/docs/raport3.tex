@@ -1,0 +1,81 @@
+\input{header.tex}
+\usepackage{listings}
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Treść zadania}
+\begin{enumerate}
+\item Przygotować ,,administracyjny'' system Linux pracujący w
+initramfs, umożliwiający przygotowanie karty pamięci SD do
+instalacji systemu Linux pracującego z systemem plików
+$e2fs$, montowanym z partycji 2 na karcie SD
+
+\item Przygotować „użytkowy” system Linux pracujący z
+systemem plików $e2fs$, zawierający serwer WWW,
+udostępniający pliki z partycji 3 na karcie SD i umożliwiający
+wgrywanie nowych plików po podaniu hasła.
+
+\item Należy też przygotować bootloader, umożliwiający
+określenie (przy pomocy przycisku), który system ma zostać
+załadowany.
+\end{enumerate}
+
+\section{Rozwiązanie}
+Stworzyłem dwie wersje systemu linux używając buildroota. jeden administracyjny 
+z systemem plików initramfs oraz narzędziami to partycjonowania i tworzenia systemu plików $e2fs$. 
+Drugi dla użytkownika pracujący z systemem plików $ext4$ i z wbudowanym pythonem oraz obsługą GPIO.
+Dodatkowo napisałem serwer webowy uzywając biblioteki pythona Tornado,
+udostępniający pliki z folderu tymczasowego i umożliwiający upload 
+plików po podaniu hasła. Partycje zostały stworzone za pomocą systemu administracyjnego 
+używając gptfdisk i $mkfs.ext4$. Ponadto użyłem bootloadera
+barebox który umożliwia wybranie systemu lub wejście do bootloadera.
+Jeżeli system nie zostanie wybrany w ciągu 10 sekund, zostanie załadowany system użytkownika.
+
+\subsection{Konfiguracja \emph{buildroot}}
+Bazuję na konfiguracji z zadania pierwszego i dodatkowo w menu wywołanym za pomocą komendy:
+
+\begin{lstlisting}[language=bash]
+make menuconfig
+\end{lstlisting}	
+
+Dla systemu użytkownika ustawiam:
+\begin{enumerate}
+\item Filesystem images $\rightarrow$ ustawiam $ext2/3/4$ z wariantem $ext4$ i zmieniam filesystem label na \emph{rootfs}
+\item Kernel $\rightarrow$ ustawiam Install kernel image to /boot in target
+\item Bootloaders $\rightarrow$ ustawiam Barebox i zmieniam board defconfig na \emph{rpi}
+\item Target packages $\rightarrow$ Interpreter languages and scripting $\rightarrow$ ustawiam python oraz w external python modules ustawiam \emph{python-tornado}
+\end{enumerate}
+
+Dla systemu administracyjnego ustawiam:
+\begin{enumerate}
+\item Filesystem images $\rightarrow$ ustawiam initial RAM filesystem oraz Kernel binary format na uImage
+\item Target packages $\rightarrow$ Filesystem and flash utilities $\rightarrow$ ustawiam e2fsprogs
+\item Target packages $\rightarrow$ Hardware handling $\rightarrow$ ustawiam gptfdisk 
+\end{enumerate}
+
+\section{Partycjonowanie}
+
+
+\section{Konfiguracja barebox}
+Po poprawnym sformatowaniu karty kopiuję zawartość pliku init (z repozytorium w folderze scripts zadania 3) do pliku $ /env/bin/init $ zastępując poprzednią zawartość. Po czym wykonuję komendy:
+\begin{lstlisting}[language=bash]
+$ saveenv
+$ reset
+\end{lstlisting}	
+
+\section{Pliki konfiguracyjne i źródła}
+Pliki konfiguracyjne i źródła do tego jak i wcześniejszych zadań umieściłem w repozytorium
+git na serwisie www.github.com. Aby ściągnąć te źródła należy w katalogu docelowym wykonać polecenie:
+\begin{lstlisting}[language=bash]
+git clone https://github.com/dzitkowskik/buildroot-rpi-linsw.git
+\end{lstlisting}	
+\begin{itemize}
+\item buildroot\_adm\_conf -- pliki konfiguracyjne do systemu administracyjnego na initramfs
+\item buildroot\_user\_conf -- pliki systemu użytkownika z systemem plików $ext4$
+\item file\_server -- server do udostępniania plików napisany w pythonie (user: admin, hasło: admin)
+\item scripts -- skrypty (init - skrypt startowy dla barebox, update.sh - skrypt shellowy do aktualizacji systemu plików $e2fs$ na partycji dla użytkownika)
+\item docs -- dokumentacja
+\end{itemize}
+\end{document}
