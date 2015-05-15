@@ -1,0 +1,21 @@
+# /bin/sh
+case "$1" in
+	start)
+		mkdir /mnt/sdcard
+		mkdir /mnt/rootfs
+		mount /dev/mmcblk0p1 /mnt/sdcard
+		mount /dev/mmcblk0p2 /mnt/rootfs
+		sleep 2
+		udhcpc 
+		;;
+	stop)
+		umount /dev/mmcblk0p1
+		;;
+	*)
+		echo "Usage: $0 {start|stop}"
+		exit 3 
+		;;
+esac
+
+exit 0
+
