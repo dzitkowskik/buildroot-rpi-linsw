@@ -56,8 +56,22 @@ Dla systemu administracyjnego ustawiam:
 \end{enumerate}
 
 \section{Partycjonowanie}
-
-
+Do partycjonowania użyłem narzędza gptfdisk, tworząc 3 partycje. 
+\begin{lstlisting}[language=bash]
+$ fdisk -l // sprawdzam gdzie jest karta (/dev/mmcblk0)
+$ umount /dev/mmcblk0
+$ fdisk /dev/mmcblk0
+$ g	// create a new empty GPT partition table
+$ n 	// tworze partycje o rownym rozmiarze (powtarzam 3 razy)
+$ w 	// zapisuje tablice partycji na dysk
+\end{lstlisting}	
+Następnie formatuję partycje odpowiednimi systemami plików czyli pierwszą vfat i dwie ext4.
+\begin{lstlisting}[language=bash]
+$ sudo mkfs.vfat /dev/mmcblk0p1
+$ sudo mkfs.ext4 /dev/mmcblk0p2
+$ sudo mkfs.ext4 /dev/mmcblk0p3
+\end{lstlisting}	
+Teraz mogę przegrać pliki z jądrami i inne wygenerowane przez buildroot na partycję vfat.
 \section{Konfiguracja barebox}
 \begin{itemize}
 \item Zmieniam w pliku config.txt na karcie w partycji sformatowanej jako vfat, ustawiając
