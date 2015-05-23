@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script type="text/javascript">
+    $('.play-button').on('click', function () {
+        alert(start);
+    });
+
+    function act(action) {
+        if (action == 'stop')
+        {
+            $('#player-controls').hide();
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "/",
+            data: {'action': action}
+        });
+    }
+
+    function play(item) {
+        $('#player-controls').show();
+
+        $.ajax({
+            type: "POST",
+            url: "/",
+            data: {'action': 'play', 'file': item}
+        });
+    }
+</script>
+<div class="row" id="player-controls" {% if not working %}hidden{% end %}>
+    <div class="btn-group-lg">
+        <button class="btn btn-warning" onclick="act('pause')" value="pause">Pause</button>
+        <button class="btn btn-danger" onclick="act('stop')" value="pause">Stop</button>
+
+        <button class="btn btn-info" onclick="act('backward')" value="pause"><< Backward</button>
+        <button class="btn btn-info" onclick="act('forward')" value="pause">Forward >></button>
+    </div>
+</div>
+<div class="row">
+    <table class="table">
+        {%for item in items%}
+        <tr>
+            <td>{{item}}</td>
+            <td>
+                <button type="submit" class="play-button button-link" onclick="play('{{item}}')">Play</button>
+            </td>
+        </tr>
+        {%end%}
+    </table>
+</div>
+
+{% end %}

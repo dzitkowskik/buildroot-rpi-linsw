@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<table class="table">
+    {%for item in items%}
+    <tr>
+        <td>{{item}}</td>
+        <td><a class="button" href="downloadFile/{{item}}">Download</a></td>
+        <td>
+            <form action="/manage" method="post">
+                <button type="submit" class="button-link" name="file" value="{{item}}">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {%end%}
+</table>
+{% end %}

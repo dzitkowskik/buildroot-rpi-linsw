@@ -1,0 +1,13 @@
+.button-link {
+    background-color: transparent;
+    border: none;
+    color: #42dca3;
+    -webkit-transition: all .2s ease-in-out;
+    -moz-transition: all .2s ease-in-out;
+    transition: all .2s ease-in-out;
+}
+
+.button-link:hover {
+    text-decoration: none;
+    color: #1d9b6c;
+}

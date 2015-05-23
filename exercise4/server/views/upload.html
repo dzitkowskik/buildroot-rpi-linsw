@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Mp3 Files Upload</h1>
+<div class="row" id="actions">
+    <div class="btn-group col-md-8">
+        <!-- The fileinput-button span is used to style the file input field as button -->
+        <button class="btn btn-success fileinput-button dz-clickable">
+            <i class="glyphicon glyphicon-plus"></i>
+            <span>Add files...</span>
+        </button>
+        <button class="btn btn-primary start" type="submit">
+            <i class="glyphicon glyphicon-upload"></i>
+            <span>Start upload</span>
+        </button>
+        <button class="btn btn-warning cancel" type="reset">
+            <i class="glyphicon glyphicon-ban-circle"></i>
+            <span>Cancel upload</span>
+        </button>
+    </div>
+
+    <div class="col-md-4">
+        <!-- The global file processing state -->
+        <span class="fileupload-process">
+          <div aria-valuenow="0" aria-valuemax="100" aria-valuemin="0" role="progressbar"
+               class="progress progress-striped active" id="total-progress">
+              <div data-dz-uploadprogress="" style="width: 0%;" class="progress-bar progress-bar-success"></div>
+          </div>
+        </span>
+    </div>
+</div>
+<div class="row"><hr/></div>
+<div class="row">
+    <div class="table table-striped" class="files" id="previews">
+        <div id="template" class="row file-row">
+            <div class="col-md-4">
+                <small class="name text-center" data-dz-name></small>
+                <strong class="error text-danger" data-dz-errormessage></strong>
+            </div>
+            <div class="col-md-2">
+                <small class="size text-center" data-dz-size></small>
+            </div>
+            <div class="col-md-2" id="prgs-bar">
+                <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <div class="progress-bar progress-bar-success" style="width: 0%;" data-dz-uploadprogress></div>
+                </div>
+            </div>
+            <div class="col-md-4 btn-group-xs pull-right">
+                <button class="btn btn-primary start btn-xs">
+                    <i class="glyphicon glyphicon-upload"></i>
+                    <span>Start</span>
+                </button>
+                <button data-dz-remove class="btn btn-warning cancel btn-xs">
+                    <i class="glyphicon glyphicon-ban-circle"></i>
+                    <span>Cancel</span>
+                </button>
+                <button data-dz-remove class="btn btn-danger delete btn-xs">
+                    <i class="glyphicon glyphicon-trash"></i>
+                    <span>Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% end %}
