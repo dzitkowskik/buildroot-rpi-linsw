@@ -114,7 +114,7 @@
 \def\@album{\@latex@error{No album number given}\@ehc}
 %------------------------------------------------------------------------------%
 \def\@descriptionfirst{}
-\def\@descriptionsecond{Raport nr 3}
+\def\@descriptionsecond{Raport nr 4}
 \def\@pmcap{Student}
 \def\@authorcap{Autor}
 \def\@location{Warszawa}
